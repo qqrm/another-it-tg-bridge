@@ -93,9 +93,9 @@ async fn main() -> Result<()> {
         let title_raw = title_caps.get(1).unwrap().as_str();
         let title = encode_safe(title_raw);
 
-        if let Err(err) = bot.send_message(&format!("{title}\n{url}")).await {
-            warn!("failed to send message for {url}: {err}");
-        }
+        bot.send_message(&format!("{title}\n{url}"))
+            .await
+            .with_context(|| format!("failed to send message for {url}"))?;
     }
 
     state.sent_urls.extend(to_send);
