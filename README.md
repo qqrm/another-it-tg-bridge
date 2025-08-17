@@ -20,7 +20,6 @@ Posts new articles from [another-it.ru](https://another-it.ru/) to a Telegram ch
 
 - `TELEGRAM_BOT_TOKEN` – Telegram bot token.
 - `TELEGRAM_CHAT_ID` – target chat identifier.
-- `SENT_ARTICLES_PATH` – path to the JSON file that stores already sent URLs (`state.json` by default).
 - `RUST_LOG` – optional logging level (e.g., `info`).
 
 ## Manual run
@@ -28,14 +27,12 @@ Posts new articles from [another-it.ru](https://another-it.ru/) to a Telegram ch
 ```sh
 export TELEGRAM_BOT_TOKEN=...
 export TELEGRAM_CHAT_ID=...
-# optional
-export SENT_ARTICLES_PATH=state.json
 cargo run --release
 ```
 
 ## GitHub Actions
 
-The workflow at `.github/workflows/post.yml` builds the binary on a schedule or manual dispatch and commits the updated state file.
+The workflow at `.github/workflows/post.yml` builds the binary on a schedule or manual dispatch.
 
 ## Development
 

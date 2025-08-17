@@ -8,6 +8,7 @@ on:
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    environment: prod
     permissions:
       contents: read
       actions: read
@@ -30,19 +31,6 @@ jobs:
             target
           key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Download sent articles state
-        uses: dawidd6/action-download-artifact@v2
-        with:
-          workflow: post.yml
-          name: sent_articles
-          path: data
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          workflow_conclusion: success
-          if_no_artifact_found: fail
-
-      - name: Ensure data directory exists
-        run: mkdir -p data
-
       - name: Build
         run: cargo build --release
 
@@ -50,15 +38,8 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          SENT_ARTICLES_PATH: data/sent_articles.json
           RUST_LOG: info
         run: ./target/release/another-it-tg-bridge
-
-      - name: Upload sent articles state
-        uses: actions/upload-artifact@v4
-        with:
-          name: sent_articles
-          path: data/sent_articles.json
 
       - name: Notify failure
         if: failure()

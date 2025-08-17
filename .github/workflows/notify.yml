@@ -8,6 +8,7 @@ on:
 jobs:
   notify:
     runs-on: ubuntu-latest
+    environment: prod
 
     steps:
       - uses: actions/checkout@v4
@@ -18,12 +19,3 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: ./target/release/another-it-tg-bridge
-      - name: Commit state
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          if ! git diff --quiet -- state.json; then
-            git add state.json
-            git commit -m "chore: update state"
-            git push
-          fi
