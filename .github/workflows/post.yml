@@ -15,21 +15,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-
       - name: Download sent articles state
         uses: dawidd6/action-download-artifact@v2
         with:
@@ -43,8 +28,10 @@ jobs:
       - name: Ensure data directory exists
         run: mkdir -p data
 
-      - name: Build
-        run: cargo build --release
+      - name: Download binary
+        run: |
+          curl -L "https://github.com/${{ github.repository }}/releases/download/latest/another-it-tg-bridge" -o another-it-tg-bridge
+          chmod +x another-it-tg-bridge
 
       - name: Run
         env:
@@ -52,7 +39,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           SENT_ARTICLES_PATH: data/sent_articles.json
           RUST_LOG: info
-        run: ./target/release/another-it-tg-bridge
+        run: ./another-it-tg-bridge
 
       - name: Upload sent articles state
         uses: actions/upload-artifact@v4

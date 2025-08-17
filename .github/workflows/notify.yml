@@ -11,13 +11,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo build --release
+      - name: Download binary
+        run: |
+          curl -L "https://github.com/${{ github.repository }}/releases/download/latest/another-it-tg-bridge" -o another-it-tg-bridge
+          chmod +x another-it-tg-bridge
       - name: Run bridge
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: ./target/release/another-it-tg-bridge
+        run: ./another-it-tg-bridge
       - name: Commit state
         run: |
           git config user.name "github-actions[bot]"
