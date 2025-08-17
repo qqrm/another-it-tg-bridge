@@ -20,7 +20,7 @@ Posts new articles from [another-it.ru](https://another-it.ru/) to a Telegram ch
 
 - `TELEGRAM_BOT_TOKEN` – Telegram bot token.
 - `TELEGRAM_CHAT_ID` – target chat identifier.
-- `RUST_LOG` – optional logging level (e.g., `info`).
+- `RUST_LOG` – optional logging level (workflows use `info`).
 
 ## Manual run
 
