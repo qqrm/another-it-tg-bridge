@@ -8,6 +8,7 @@ on:
 jobs:
   notify:
     runs-on: ubuntu-latest
+    environment: prod
 
     steps:
       - uses: actions/checkout@v4
@@ -18,7 +19,8 @@ jobs:
       - name: Run bridge
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
+          RUST_LOG: warn
         run: ./another-it-tg-bridge
       - name: Commit state
         run: |
