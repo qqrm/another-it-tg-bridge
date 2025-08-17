@@ -69,7 +69,7 @@ async fn main() -> Result<()> {
     // Send oldest messages first
     to_send.reverse();
 
-    let bot = TelegramBot::from_env()?
+    let bot = TelegramBot::from_env()?;
     let title_re = Regex::new(r#"<h1[^>]*>(.*?)</h1>"#)?;
     for url in to_send.iter() {
         let article_html = client
