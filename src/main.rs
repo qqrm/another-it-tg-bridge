@@ -2,7 +2,7 @@ mod telegram;
 
 use anyhow::{Context, Result};
 use html_escape::encode_safe;
-use log::info;
+use log::{info, warn};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -72,22 +72,30 @@ async fn main() -> Result<()> {
     let bot = TelegramBot::from_env()?;
     let title_re = Regex::new(r#"<h1[^>]*>(.*?)</h1>"#)?;
     for url in to_send.iter() {
-        let article_html = client
-            .get(url)
-            .send()
-            .await
-            .context("failed to fetch article")?
-            .text()
-            .await?;
+        let article_html = match client.get(url).send().await {
+            Ok(resp) => match resp.text().await {
+                Ok(text) => text,
+                Err(err) => {
+                    warn!("failed to read article {url}: {err}");
+                    continue;
+                }
+            },
+            Err(err) => {
+                warn!("failed to fetch article {url}: {err}");
+                continue;
+            }
+        };
 
-        let title_caps = title_re
-            .captures(&article_html)
-            .context("title not found")?;
+        let Some(title_caps) = title_re.captures(&article_html) else {
+            warn!("title not found for {url}");
+            continue;
+        };
         let title_raw = title_caps.get(1).unwrap().as_str();
         let title = encode_safe(title_raw);
 
-        let message = format!("{title}\n{url}");
-        bot.send_message(&message).await?;
+        if let Err(err) = bot.send_message(&format!("{title}\n{url}")).await {
+            warn!("failed to send message for {url}: {err}");
+        }
     }
 
     state.sent_urls.extend(to_send);
