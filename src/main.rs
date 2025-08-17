@@ -55,7 +55,7 @@ async fn main() -> Result<()> {
     let title = encode_safe(title_raw);
 
     let bot = TelegramBot::from_env()?;
-    let message = format!("{}\n{}", title, url);
+    let message = format!("{title}\n{url}");
     bot.send_message(&message).await?;
 
     state.last_url = Some(url);
