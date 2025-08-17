@@ -1,0 +1,23 @@
+name: Release Binary
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release
+      - name: Upload binary to release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: latest
+          allowUpdates: true
+          replacesArtifacts: true
+          artifacts: target/release/another-it-tg-bridge
+          token: ${{ secrets.GITHUB_TOKEN }}
