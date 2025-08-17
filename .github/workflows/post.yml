@@ -8,6 +8,7 @@ on:
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    environment: prod
     permissions:
       contents: read
       actions: read
@@ -36,9 +37,9 @@ jobs:
       - name: Run
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
           SENT_ARTICLES_PATH: data/sent_articles.json
-          RUST_LOG: info
+          RUST_LOG: warn
         run: ./another-it-tg-bridge
 
       - name: Upload sent articles state
