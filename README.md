@@ -22,6 +22,7 @@ Posts new articles from [another-it.ru](https://another-it.ru/) to a Telegram ch
 - `TELEGRAM_CHAT_ID` – target chat identifier.
 - `SENT_ARTICLES_PATH` – path to the JSON file that stores already sent URLs (`state.json` by default).
 - `RUST_LOG` – optional logging level (e.g., `info`).
+- `TARGET_DATE` – optional date in `YYYY/MM/DD` used to filter posts.
 
 ## Manual run
 
