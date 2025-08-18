@@ -1,44 +1,23 @@
 mod telegram;
 
 use anyhow::{Context, Result};
+use chrono::Utc;
 use html_escape::encode_safe;
 use log::{info, warn};
 use regex::Regex;
-use serde::{Deserialize, Serialize};
-use std::path::Path;
 use telegram::TelegramBot;
-use tokio::fs;
+use tokio::time::{sleep, Duration};
 
 const HOME_URL: &str = "https://another-it.ru/";
-
-#[derive(Debug, Serialize, Deserialize, Default)]
-struct State {
-    #[serde(default)]
-    sent_urls: Vec<String>,
-}
-
-async fn load_state(path: &Path) -> Result<State> {
-    if path.exists() {
-        let data = fs::read_to_string(path).await?;
-        let state: State = serde_json::from_str(&data)?;
-        Ok(state)
-    } else {
-        Ok(State::default())
-    }
-}
-
-async fn save_state(path: &Path, state: &State) -> Result<()> {
-    let data = serde_json::to_string(state)?;
-    fs::write(path, data).await?;
-    Ok(())
-}
 
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
-
-    let state_path = std::env::var("SENT_ARTICLES_PATH").unwrap_or_else(|_| "state.json".into());
-    let mut state = load_state(Path::new(&state_path)).await?;
+    let run_number: u64 = std::env::var("GITHUB_RUN_NUMBER")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+    let is_first_run = run_number <= 1;
     let client = reqwest::Client::new();
 
     let html = client
@@ -56,22 +35,22 @@ async fn main() -> Result<()> {
         .collect();
     urls.truncate(10);
 
-    let mut to_send: Vec<String> = urls
-        .into_iter()
-        .filter(|u| !state.sent_urls.contains(u))
-        .collect();
+    if !is_first_run {
+        let today = Utc::now().format("%Y/%m/%d").to_string();
+        urls.retain(|u| u.contains(&today));
+    }
 
-    if to_send.is_empty() {
+    if urls.is_empty() {
         info!("no new posts");
         return Ok(());
     }
 
     // Send oldest messages first
-    to_send.reverse();
+    urls.reverse();
 
     let bot = TelegramBot::from_env()?;
     let title_re = Regex::new(r#"<h1[^>]*>(.*?)</h1>"#)?;
-    for url in to_send.iter() {
+    for (idx, url) in urls.iter().enumerate() {
         let article_html = match client.get(url).send().await {
             Ok(resp) => match resp.text().await {
                 Ok(text) => text,
@@ -96,10 +75,10 @@ async fn main() -> Result<()> {
         bot.send_message(&format!("{title}\n{url}"))
             .await
             .with_context(|| format!("failed to send message for {url}"))?;
+
+        if is_first_run && idx + 1 < urls.len() {
+            sleep(Duration::from_secs(60)).await;
+        }
     }
-
-    state.sent_urls.extend(to_send);
-    save_state(Path::new(&state_path), &state).await?;
-
     Ok(())
 }
