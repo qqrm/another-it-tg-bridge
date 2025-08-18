@@ -13,11 +13,13 @@ const HOME_URL: &str = "https://another-it.ru/";
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
+    let target_date = std::env::var("TARGET_DATE").ok();
+
     let run_number: u64 = std::env::var("GITHUB_RUN_NUMBER")
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(0);
-    let is_first_run = run_number <= 1;
+    let is_first_run = run_number <= 1 && target_date.is_none();
     let client = reqwest::Client::new();
 
     let html = client
@@ -36,8 +38,8 @@ async fn main() -> Result<()> {
     urls.truncate(10);
 
     if !is_first_run {
-        let today = Utc::now().format("%Y/%m/%d").to_string();
-        urls.retain(|u| u.contains(&today));
+        let filter_date = target_date.unwrap_or_else(|| Utc::now().format("%Y/%m/%d").to_string());
+        urls.retain(|u| u.contains(&filter_date));
     }
 
     if urls.is_empty() {

@@ -1,0 +1,32 @@
+name: Debug run
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Date in DD.MM.YYYY'
+        required: false
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare target date
+        run: |
+          if [ -n "${{ inputs.date }}" ]; then
+            echo "TARGET_DATE=$(date -d '${{ inputs.date }}' +%Y/%m/%d)" >> $GITHUB_ENV
+          else
+            echo "TARGET_DATE=$(date +%Y/%m/%d)" >> $GITHUB_ENV
+          fi
+      - name: Download binary
+        run: |
+          curl -L "https://github.com/${{ github.repository }}/releases/download/latest/another-it-tg-bridge" -o another-it-tg-bridge
+          chmod +x another-it-tg-bridge
+      - name: Run
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUST_LOG: warn
+        run: ./another-it-tg-bridge
