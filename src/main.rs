@@ -1,7 +1,7 @@
 mod telegram;
 
 use anyhow::{Context, Result};
-use chrono::Utc;
+use chrono::{FixedOffset, Utc};
 use html_escape::encode_safe;
 use log::{info, warn};
 use regex::Regex;
@@ -41,7 +41,12 @@ async fn main() -> Result<()> {
     urls.truncate(10);
 
     if !is_first_run {
-        let filter_date = target_date.unwrap_or_else(|| Utc::now().format("%Y/%m/%d").to_string());
+        let filter_date = target_date.unwrap_or_else(|| {
+            Utc::now()
+                .with_timezone(&FixedOffset::east_opt(3 * 3600).unwrap())
+                .format("%Y/%m/%d")
+                .to_string()
+        });
         urls.retain(|u| u.contains(&filter_date));
     }
 
