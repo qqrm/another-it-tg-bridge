@@ -15,10 +15,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Download binary
         run: |
-          curl -L "https://github.com/${{ github.repository }}/releases/download/latest/another-it-tg-bridge" -o another-it-tg-bridge
+          curl -L -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -o another-it-tg-bridge \
+            https://github.com/${{ github.repository }}/releases/download/latest/another-it-tg-bridge
           chmod +x another-it-tg-bridge
 
       - name: Run
