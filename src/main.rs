@@ -3,7 +3,7 @@ mod telegram;
 use anyhow::{Context, Result};
 use chrono::{FixedOffset, Utc};
 use html_escape::encode_safe;
-use log::{info, warn};
+use log::{debug, info, warn};
 use regex::Regex;
 use telegram::TelegramBot;
 use tokio::time::{sleep, Duration};
@@ -23,6 +23,7 @@ async fn main() -> Result<()> {
         .and_then(|v| v.parse().ok())
         .unwrap_or(0);
     let is_first_run = run_number <= 1 && target_date.is_none();
+    debug!("run_number={run_number}, target_date={target_date:?}, is_first_run={is_first_run}");
     let client = reqwest::Client::new();
 
     let html = client
@@ -38,7 +39,9 @@ async fn main() -> Result<()> {
         .captures_iter(&html)
         .map(|c| c.get(1).unwrap().as_str().to_string())
         .collect();
+    debug!("fetched {} urls", urls.len());
     urls.truncate(10);
+    debug!("urls after truncate: {urls:?}");
 
     if !is_first_run {
         let filter_date = target_date.unwrap_or_else(|| {
@@ -47,7 +50,9 @@ async fn main() -> Result<()> {
                 .format("%Y/%m/%d")
                 .to_string()
         });
+        debug!("filtering by date {filter_date}");
         urls.retain(|u| u.contains(&filter_date));
+        debug!("urls after filtering: {urls:?}");
     }
 
     if urls.is_empty() {
@@ -57,10 +62,12 @@ async fn main() -> Result<()> {
 
     // Send oldest messages first
     urls.reverse();
+    debug!("final url order: {urls:?}");
 
     let bot = TelegramBot::from_env()?;
     let title_re = Regex::new(r#"<h1[^>]*>(.*?)</h1>"#)?;
     for (idx, url) in urls.iter().enumerate() {
+        debug!("processing url {url}");
         let article_html = match client.get(url).send().await {
             Ok(resp) => match resp.text().await {
                 Ok(text) => text,
@@ -85,6 +92,7 @@ async fn main() -> Result<()> {
         bot.send_message(&format!("{title}\n{url}"))
             .await
             .with_context(|| format!("failed to send message for {url}"))?;
+        debug!("sent message for {url}");
 
         if is_first_run && idx + 1 < urls.len() {
             sleep(Duration::from_secs(60)).await;
