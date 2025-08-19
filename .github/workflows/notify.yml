@@ -22,7 +22,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-          RUST_LOG: warn
+          RUST_LOG: info
         run: ./another-it-tg-bridge
       - name: Commit state
         run: |
