@@ -18,6 +18,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: latest
+          commit: ${{ github.sha }}
           allowUpdates: true
           replacesArtifacts: true
           artifacts: target/release/another-it-tg-bridge
