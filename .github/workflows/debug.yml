@@ -15,16 +15,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Prepare target date
         run: |
-          if [ -n "${{ inputs.date }}" ]; then
-            echo "TARGET_DATE=$(date -d '${{ inputs.date }}' +%Y/%m/%d)" >> $GITHUB_ENV
-          else
-            echo "TARGET_DATE=$(date +%Y/%m/%d)" >> $GITHUB_ENV
-          fi
+          if [ -n "$INPUT_DATE" ]; then echo "TARGET_DATE=$(date -d "$INPUT_DATE" +%Y/%m/%d)" >> "$GITHUB_ENV"; else echo "TARGET_DATE=$(date +%Y/%m/%d)" >> "$GITHUB_ENV"; fi
       - name: Download binary
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          curl -L -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          curl -L -H "Authorization: Bearer $GITHUB_TOKEN" \
             -o another-it-tg-bridge \
-            https://github.com/${{ github.repository }}/releases/latest/download/another-it-tg-bridge
+            "https://github.com/$GITHUB_REPOSITORY/releases/latest/download/another-it-tg-bridge"
           chmod +x another-it-tg-bridge
       - name: Run
         env:

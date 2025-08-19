@@ -16,10 +16,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Download binary
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          curl -L -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          curl -L -H "Authorization: Bearer $GITHUB_TOKEN" \
             -o another-it-tg-bridge \
-            https://github.com/${{ github.repository }}/releases/download/latest/another-it-tg-bridge
+            "https://github.com/$GITHUB_REPOSITORY/releases/download/latest/another-it-tg-bridge"
           chmod +x another-it-tg-bridge
 
       - name: Run
@@ -33,15 +35,11 @@ jobs:
         if: failure()
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.DEV_TELEGRAM_CHAT_ID }}
         run: |
-          if [ -z "$CHAT_ID" ]; then
-            echo "DEV_TELEGRAM_CHAT_ID is not set, skipping notification"
-            exit 0
-          fi
+          if [ -z "$DEV_TELEGRAM_CHAT_ID" ]; then echo "DEV_TELEGRAM_CHAT_ID is not set, skipping notification"; exit 0; fi;
           curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-            -d chat_id="${CHAT_ID}" \
-            -d text="❌ Workflow '${{ github.workflow }}' failed. See https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            -d chat_id="$DEV_TELEGRAM_CHAT_ID" \
+            -d text="❌ Workflow '${GITHUB_WORKFLOW}' failed. See https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
   cleanup-old-runs:
     needs: run-bot
