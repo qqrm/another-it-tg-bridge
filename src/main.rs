@@ -13,7 +13,10 @@ const HOME_URL: &str = "https://another-it.ru/";
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
-    let target_date = std::env::var("TARGET_DATE").ok();
+    // First command line argument overrides TARGET_DATE for debugging
+    let target_date = std::env::args()
+        .nth(1)
+        .or_else(|| std::env::var("TARGET_DATE").ok());
 
     let run_number: u64 = std::env::var("GITHUB_RUN_NUMBER")
         .ok()

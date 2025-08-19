@@ -22,7 +22,8 @@ Posts new articles from [another-it.ru](https://another-it.ru/) to a Telegram ch
 - `TELEGRAM_CHAT_ID` – target chat identifier.
 - `SENT_ARTICLES_PATH` – path to the JSON file that stores already sent URLs (`state.json` by default).
 - `RUST_LOG` – optional logging level (e.g., `info`).
-- `TARGET_DATE` – optional date in `YYYY/MM/DD` used to filter posts.
+- `TARGET_DATE` – optional date in `YYYY/MM/DD` used to filter posts. The same value can be
+  provided as the first command line argument for debugging.
 
 ## Manual run
 
@@ -32,6 +33,8 @@ export TELEGRAM_CHAT_ID=...
 # optional
 export SENT_ARTICLES_PATH=state.json
 cargo run --release
+# For debugging a specific date:
+# cargo run --release 2025/05/26
 ```
 
 ## GitHub Actions
