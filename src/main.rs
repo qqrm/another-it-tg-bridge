@@ -40,8 +40,6 @@ async fn main() -> Result<()> {
         .map(|c| c.get(1).unwrap().as_str().to_string())
         .collect();
     debug!("fetched {} urls", urls.len());
-    urls.truncate(10);
-    debug!("urls after truncate: {urls:?}");
 
     if !is_first_run {
         let filter_date = target_date.unwrap_or_else(|| {
@@ -53,6 +51,9 @@ async fn main() -> Result<()> {
         debug!("filtering by date {filter_date}");
         urls.retain(|u| u.contains(&filter_date));
         debug!("urls after filtering: {urls:?}");
+    } else {
+        urls.truncate(10);
+        debug!("urls after truncate: {urls:?}");
     }
 
     if urls.is_empty() {
