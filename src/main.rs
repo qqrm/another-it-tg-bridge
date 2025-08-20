@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use chrono::{Duration as ChronoDuration, FixedOffset, Utc};
 use html_escape::encode_safe;
 use log::{debug, info, warn};
-use regex::Regex;
+use scraper::{Html, Selector};
 use telegram::TelegramBot;
 use tokio::time::{sleep, Duration};
 
@@ -34,10 +34,12 @@ async fn main() -> Result<()> {
         .text()
         .await?;
 
-    let re = Regex::new(r#"<h2 class=\"entry-title[^\"]*\"><a href=\"([^\"]+)\""#)?;
-    let mut urls: Vec<String> = re
-        .captures_iter(&html)
-        .map(|c| c.get(1).unwrap().as_str().to_string())
+    let document = Html::parse_document(&html);
+    let link_selector = Selector::parse("main#site-content h2.entry-title > a").unwrap();
+    let mut urls: Vec<String> = document
+        .select(&link_selector)
+        .filter_map(|el| el.value().attr("href"))
+        .map(|href| href.to_string())
         .collect();
     debug!("fetched {} urls", urls.len());
 
@@ -66,7 +68,7 @@ async fn main() -> Result<()> {
     debug!("final url order: {urls:?}");
 
     let bot = TelegramBot::from_env()?;
-    let title_re = Regex::new(r#"<h1[^>]*>(.*?)</h1>"#)?;
+    let title_selector = Selector::parse("h1").unwrap();
     for (idx, url) in urls.iter().enumerate() {
         debug!("processing url {url}");
         let article_html = match client.get(url).send().await {
@@ -83,12 +85,13 @@ async fn main() -> Result<()> {
             }
         };
 
-        let Some(title_caps) = title_re.captures(&article_html) else {
+        let article_doc = Html::parse_document(&article_html);
+        let Some(title_elem) = article_doc.select(&title_selector).next() else {
             warn!("title not found for {url}");
             continue;
         };
-        let title_raw = title_caps.get(1).unwrap().as_str();
-        let title = encode_safe(title_raw);
+        let title_raw = title_elem.inner_html();
+        let title = encode_safe(&title_raw);
 
         bot.send_message(&format!("{title}\n{url}"))
             .await
