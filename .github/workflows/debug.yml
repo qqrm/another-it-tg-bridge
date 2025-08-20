@@ -1,10 +1,10 @@
-name: Debug run
+name: Debug
 
 on:
   workflow_dispatch:
     inputs:
       date:
-        description: 'Date in YYYY/MM/DD'
+        description: 'Date in YYYY/MM/DD or YYYY-MM-DD'
         required: true
 
 jobs:
@@ -17,17 +17,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set TARGET_DATE from input
-        run: echo "TARGET_DATE=$(date -d '${{ github.event.inputs.date }}' +%Y/%m/%d)" >> "$GITHUB_ENV"
-
       - name: Download binary from latest release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release download latest -p another-it-tg-bridge -O another-it-tg-bridge
           chmod +x another-it-tg-bridge
-          ls -l another-it-tg-bridge
-          file another-it-tg-bridge
 
       - name: Check config
         env:
@@ -42,6 +37,4 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
           RUST_LOG: info
-        run: |
-          echo "TARGET_DATE=$TARGET_DATE"
-          ./another-it-tg-bridge
+        run: ./another-it-tg-bridge "${{ github.event.inputs.date }}"
