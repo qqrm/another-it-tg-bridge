@@ -1,4 +1,4 @@
-name: Post to Telegram
+name: Post
 
 on:
   schedule:
@@ -11,72 +11,22 @@ jobs:
     environment: prod
     permissions:
       contents: read
-      actions: read
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
       - name: Download binary
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           curl -L -H "Authorization: Bearer $GITHUB_TOKEN" \
             -o another-it-tg-bridge \
-            "https://github.com/$GITHUB_REPOSITORY/releases/latest/download/another-it-tg-bridge"
+            "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/another-it-tg-bridge"
           chmod +x another-it-tg-bridge
 
       - name: Run
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
           RUST_LOG: info
         run: ./another-it-tg-bridge
-
-      - name: Notify failure
-        if: failure()
-        env:
-          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        run: |
-          if [ -z "$DEV_TELEGRAM_CHAT_ID" ]; then echo "DEV_TELEGRAM_CHAT_ID is not set, skipping notification"; exit 0; fi;
-          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-            -d chat_id="$DEV_TELEGRAM_CHAT_ID" \
-            -d text="❌ Workflow '${GITHUB_WORKFLOW}' failed. See https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-
-  cleanup-old-runs:
-    needs: run-bot
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-    steps:
-      - name: Delete old workflow runs
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000;
-            const workflows = await github.paginate(
-              github.rest.actions.listRepoWorkflows,
-              {
-                owner: context.repo.owner,
-                repo: context.repo.repo
-              }
-            );
-            for (const wf of workflows) {
-              const runs = await github.paginate(
-                github.rest.actions.listWorkflowRuns,
-                {
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  workflow_id: wf.id,
-                  status: 'completed'
-                }
-              );
-              for (const run of runs) {
-                if (Date.parse(run.updated_at) < cutoff) {
-                  await github.rest.actions.deleteWorkflowRun({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    run_id: run.id
-                  });
-                }
-              }
-            }

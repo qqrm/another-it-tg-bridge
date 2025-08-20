@@ -24,7 +24,8 @@ impl TelegramBot {
 
     pub async fn send_message(&self, text: &str) -> Result<()> {
         let url = format!("https://api.telegram.org/bot{}/sendMessage", self.token);
-        self.client
+        let resp = self
+            .client
             .post(&url)
             .form(&[
                 ("chat_id", self.chat_id.as_str()),
@@ -33,9 +34,11 @@ impl TelegramBot {
             ])
             .send()
             .await
-            .context("failed to send request")?
-            .error_for_status()
-            .context("telegram returned error")?;
+            .context("failed to send request")?;
+        let status = resp.status();
+        if !status.is_success() {
+            anyhow::bail!("telegram returned HTTP {}", status);
+        }
         Ok(())
     }
 }

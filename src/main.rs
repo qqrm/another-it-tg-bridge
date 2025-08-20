@@ -1,106 +1,110 @@
 mod telegram;
 
 use anyhow::{Context, Result};
-use chrono::{Duration as ChronoDuration, FixedOffset, Utc};
+use chrono::{Duration as ChronoDuration, FixedOffset, NaiveDate, Utc};
 use html_escape::encode_safe;
-use log::{debug, info, warn};
+use log::{info, warn};
+use reqwest::Client;
 use scraper::{Html, Selector};
 use telegram::TelegramBot;
-use tokio::time::{sleep, Duration};
 
-const HOME_URL: &str = "https://another-it.ru/";
+const BASE_URL: &str = "https://another-it.ru";
 
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
-    // First command line argument overrides TARGET_DATE for debugging
-    let target_date = std::env::args()
-        .nth(1)
-        .or_else(|| std::env::var("TARGET_DATE").ok());
 
-    let run_number: u64 = std::env::var("GITHUB_RUN_NUMBER")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0);
-    let is_first_run = run_number <= 1 && target_date.is_none();
-    debug!("run_number={run_number}, target_date={target_date:?}, is_first_run={is_first_run}");
-    let client = reqwest::Client::new();
+    let date = determine_date()?;
+    let page_url = format!("{BASE_URL}/{date}/");
+    let client = Client::new();
 
-    let html = client
-        .get(HOME_URL)
+    let page_html = client
+        .get(&page_url)
         .send()
         .await
-        .context("failed to fetch homepage")?
+        .and_then(|r| r.error_for_status())
+        .context("failed to fetch daily page")?
         .text()
-        .await?;
+        .await
+        .context("failed to read daily page")?;
 
-    let document = Html::parse_document(&html);
+    let doc = Html::parse_document(&page_html);
     let link_selector = Selector::parse("main#site-content h2.entry-title > a").unwrap();
-    let mut urls: Vec<String> = document
+    let links: Vec<String> = doc
         .select(&link_selector)
-        .filter_map(|el| el.value().attr("href"))
+        .filter_map(|a| a.value().attr("href"))
         .map(|href| href.to_string())
+        .filter(|href| href.contains(&date))
         .collect();
-    debug!("fetched {} urls", urls.len());
 
-    if !is_first_run {
-        let filter_date = target_date.unwrap_or_else(|| {
-            (Utc::now().with_timezone(&FixedOffset::east_opt(3 * 3600).unwrap())
-                - ChronoDuration::days(1))
-            .format("%Y/%m/%d")
-            .to_string()
-        });
-        debug!("filtering by date {filter_date}");
-        urls.retain(|u| u.contains(&filter_date));
-        debug!("urls after filtering: {urls:?}");
-    } else {
-        urls.truncate(10);
-        debug!("urls after truncate: {urls:?}");
-    }
-
-    if urls.is_empty() {
+    if links.is_empty() {
         info!("no new posts");
         return Ok(());
     }
 
-    // Send oldest messages first
-    urls.reverse();
-    debug!("final url order: {urls:?}");
-
     let bot = TelegramBot::from_env()?;
     let title_selector = Selector::parse("h1").unwrap();
-    for (idx, url) in urls.iter().enumerate() {
-        debug!("processing url {url}");
+    let mut sent = 0usize;
+
+    for url in links.iter().rev() {
         let article_html = match client.get(url).send().await {
-            Ok(resp) => match resp.text().await {
-                Ok(text) => text,
-                Err(err) => {
-                    warn!("failed to read article {url}: {err}");
+            Ok(resp) => match resp.error_for_status() {
+                Ok(ok) => match ok.text().await {
+                    Ok(text) => text,
+                    Err(e) => {
+                        warn!("failed to read article {url}: {e}");
+                        continue;
+                    }
+                },
+                Err(e) => {
+                    warn!("article {url} returned error: {e}");
                     continue;
                 }
             },
-            Err(err) => {
-                warn!("failed to fetch article {url}: {err}");
+            Err(e) => {
+                warn!("failed to fetch article {url}: {e}");
                 continue;
             }
         };
 
         let article_doc = Html::parse_document(&article_html);
-        let Some(title_elem) = article_doc.select(&title_selector).next() else {
+        let Some(title_el) = article_doc.select(&title_selector).next() else {
             warn!("title not found for {url}");
             continue;
         };
-        let title_raw = title_elem.inner_html();
-        let title = encode_safe(&title_raw);
+        let title = encode_safe(&title_el.inner_html()).to_string();
 
-        bot.send_message(&format!("{title}\n{url}"))
-            .await
-            .with_context(|| format!("failed to send message for {url}"))?;
-        debug!("sent message for {url}");
-
-        if is_first_run && idx + 1 < urls.len() {
-            sleep(Duration::from_secs(60)).await;
+        if let Err(e) = bot.send_message(&format!("{title}\n{url}")).await {
+            warn!("telegram error for {url}: {e}");
+            continue;
         }
+        sent += 1;
     }
+
+    if sent == 0 {
+        anyhow::bail!("no messages sent");
+    }
+
     Ok(())
+}
+
+fn determine_date() -> Result<String> {
+    if let Some(arg) = std::env::args().nth(1) {
+        parse_date(&arg)
+    } else {
+        Ok(yesterday_moscow())
+    }
+}
+
+fn parse_date(input: &str) -> Result<String> {
+    let normalized = input.replace('-', "/");
+    let date = NaiveDate::parse_from_str(&normalized, "%Y/%m/%d").context("invalid date")?;
+    Ok(date.format("%Y/%m/%d").to_string())
+}
+
+fn yesterday_moscow() -> String {
+    let tz = FixedOffset::east_opt(3 * 3600).unwrap();
+    (Utc::now().with_timezone(&tz) - ChronoDuration::days(1))
+        .format("%Y/%m/%d")
+        .to_string()
 }
