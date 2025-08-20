@@ -5,7 +5,7 @@ on:
     inputs:
       date:
         description: 'Date in YYYY/MM/DD'
-        required: false
+        required: true
 
 jobs:
   run-bot:
@@ -17,13 +17,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Prepare target date
-        run: |
-          if [ -n "${{ github.event.inputs.date }}" ]; then
-            echo "TARGET_DATE=$(date -d '${{ github.event.inputs.date }}' +%Y/%m/%d)" >> "$GITHUB_ENV"
-          else
-            echo "TARGET_DATE=$(date +%Y/%m/%d)" >> "$GITHUB_ENV"
-          fi
+      - name: Set TARGET_DATE from input
+        run: echo "TARGET_DATE=$(date -d '${{ github.event.inputs.date }}' +%Y/%m/%d)" >> "$GITHUB_ENV"
 
       - name: Download binary from latest release
         env:
