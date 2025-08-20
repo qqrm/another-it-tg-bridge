@@ -34,10 +34,10 @@ jobs:
           ls -l another-it-tg-bridge
           file another-it-tg-bridge
 
-      - name: Check required secrets
+      - name: Check config
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
         run: |
           : "${TELEGRAM_BOT_TOKEN:?missing TELEGRAM_BOT_TOKEN}"
           : "${TELEGRAM_CHAT_ID:?missing TELEGRAM_CHAT_ID}"
@@ -45,7 +45,7 @@ jobs:
       - name: Run
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
           RUST_LOG: info
         run: |
           echo "TARGET_DATE=$TARGET_DATE"
