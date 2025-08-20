@@ -11,26 +11,42 @@ jobs:
   run-bot:
     runs-on: ubuntu-latest
     environment: prod
+    permissions:
+      contents: read
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Prepare target date
         run: |
-          if [ -n "$INPUT_DATE" ]; then
-            echo "TARGET_DATE=$(date -d \"$INPUT_DATE\" +%Y/%m/%d)" >> "$GITHUB_ENV"
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            echo "TARGET_DATE=$(date -d '${{ github.event.inputs.date }}' +%Y/%m/%d)" >> "$GITHUB_ENV"
           else
             echo "TARGET_DATE=$(date +%Y/%m/%d)" >> "$GITHUB_ENV"
           fi
-      - name: Download binary
+
+      - name: Download binary from latest release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          curl -L -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -o another-it-tg-bridge \
-            "https://github.com/$GITHUB_REPOSITORY/releases/latest/download/another-it-tg-bridge"
+          gh release download latest -p another-it-tg-bridge -O another-it-tg-bridge
           chmod +x another-it-tg-bridge
+          ls -l another-it-tg-bridge
+          file another-it-tg-bridge
+
+      - name: Check required secrets
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          : "${TELEGRAM_BOT_TOKEN:?missing TELEGRAM_BOT_TOKEN}"
+          : "${TELEGRAM_CHAT_ID:?missing TELEGRAM_CHAT_ID}"
+
       - name: Run
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RUST_LOG: info
-        run: ./another-it-tg-bridge
+        run: |
+          echo "TARGET_DATE=$TARGET_DATE"
+          ./another-it-tg-bridge
