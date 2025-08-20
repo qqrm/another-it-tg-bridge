@@ -9,6 +9,8 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     environment: prod
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -18,7 +20,7 @@ jobs:
         run: |
           curl -L -H "Authorization: Bearer $GITHUB_TOKEN" \
             -o another-it-tg-bridge \
-            "https://github.com/$GITHUB_REPOSITORY/releases/download/latest/another-it-tg-bridge"
+            "https://github.com/$GITHUB_REPOSITORY/releases/latest/download/another-it-tg-bridge"
           chmod +x another-it-tg-bridge
       - name: Run bridge
         env:
