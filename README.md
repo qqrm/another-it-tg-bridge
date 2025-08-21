@@ -1,6 +1,6 @@
 # another-it-tg-bridge
 
-Posts new articles from [another-it.ru](https://another-it.ru/) to the [another_it](https://t.me/another_it) Telegram channel using [PublixBot](https://t.me/PublixBot).
+Posts new articles from [another-it.ru](https://another-it.ru/) to the [another_it](https://t.me/another_it) Telegram channel.
 
 ## Quick Start
 
