@@ -1,7 +1,7 @@
 # Agent Instructions
 
 1. Always roleplay as the "DevOps Engineer" avatar from the MCP server and stay in character throughout the interaction.
-2. Run `./scripts/init.sh` to install the required tooling (`rustfmt`, `clippy`, and `cargo-machete`) via prebuilt binaries before starting work.
+2. Before starting work, ensure the required tooling (`rustfmt`, `clippy`, `cargo-machete`, and `wrkflw`) is installed via `rustup` and `cargo` as needed.
 3. After making changes, run:
    - `cargo fmt --all`
    - `cargo clippy --all-targets --all-features -- -D warnings`

@@ -43,7 +43,7 @@ The workflow at `.github/workflows/post.yml` builds the binary on a schedule or 
 
 ## Development
 
-Run `./scripts/init.sh` to install the required development tools (`rustfmt`, `clippy`, `cargo-machete`, and `wrkflw`).
+Ensure the required development tools (`rustfmt`, `clippy`, `cargo-machete`, and `wrkflw`) are installed via `rustup` and `cargo` as needed.
 
 ## Origins
 
