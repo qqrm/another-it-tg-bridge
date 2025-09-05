@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use chrono::{Duration as ChronoDuration, FixedOffset, NaiveDate, Utc};
 use html_escape::encode_safe;
 use log::{info, warn};
-use reqwest::Client;
+use reqwest::{Client, StatusCode};
 use scraper::{Html, Selector};
 use telegram::TelegramBot;
 
@@ -18,11 +18,19 @@ async fn main() -> Result<()> {
     let page_url = format!("{BASE_URL}/{date}/");
     let client = Client::new();
 
-    let page_html = client
+    let resp = client
         .get(&page_url)
         .send()
         .await
-        .and_then(|r| r.error_for_status())
+        .context("failed to fetch daily page")?;
+
+    if resp.status() == StatusCode::NOT_FOUND {
+        info!("no new posts");
+        return Ok(());
+    }
+
+    let page_html = resp
+        .error_for_status()
         .context("failed to fetch daily page")?
         .text()
         .await
