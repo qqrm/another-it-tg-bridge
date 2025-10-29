@@ -1,0 +1,55 @@
+name: Update Rust toolchain
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install latest stable toolchain
+        run: rustup update stable
+
+      - name: Capture current stable version
+        id: rust
+        run: |
+          version=$(rustup run stable rustc --version | awk '{print $2}')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Update rust-toolchain
+        id: update
+        run: |
+          version="${{ steps.rust.outputs.version }}"
+          if [ -f rust-toolchain.toml ] && grep -q "channel = \"$version\"" rust-toolchain.toml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            cat <<EOT > rust-toolchain.toml
+[toolchain]
+channel = "$version"
+components = ["clippy", "rustfmt"]
+profile = "minimal"
+EOT
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create pull request
+        if: steps.update.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore: update rust toolchain to ${{ steps.rust.outputs.version }}"
+          title: "chore: update rust toolchain to ${{ steps.rust.outputs.version }}"
+          body: |
+            ## Summary
+            - Update the pinned Rust toolchain to `${{ steps.rust.outputs.version }}`.
+            - Regenerate `rust-toolchain.toml` with minimal profile and lint components.
+          branch: chore/update-rust-toolchain
+          labels: dependencies
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
