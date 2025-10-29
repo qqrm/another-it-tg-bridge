@@ -39,7 +39,24 @@ EOT
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Prepare toolchain components
+        if: steps.update.outputs.changed == 'true'
+        run: rustup component add --toolchain stable clippy rustfmt
+
+      - name: Run rustfmt
+        if: steps.update.outputs.changed == 'true'
+        run: rustup run stable cargo fmt --all
+
+      - name: Run clippy
+        if: steps.update.outputs.changed == 'true'
+        run: rustup run stable cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run tests
+        if: steps.update.outputs.changed == 'true'
+        run: rustup run stable cargo test
+
       - name: Create pull request
+        id: cpr
         if: steps.update.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
@@ -49,7 +66,16 @@ EOT
             ## Summary
             - Update the pinned Rust toolchain to `${{ steps.rust.outputs.version }}`.
             - Regenerate `rust-toolchain.toml` with minimal profile and lint components.
+            - Reformat sources and run the CI test suite against the new toolchain.
           branch: chore/update-rust-toolchain
           labels: dependencies
           author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+
+      - name: Enable auto-merge
+        if: steps.update.outputs.changed == 'true' && steps.cpr.outputs.pull-request-number
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
+          merge-method: squash
