@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install latest stable toolchain
-        run: rustup update stable
+        run: rustup update stable && rustup component add --toolchain stable clippy rustfmt
 
       - name: Capture current stable version
         id: rust
@@ -38,10 +38,6 @@ profile = "minimal"
 EOT
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Prepare toolchain components
-        if: steps.update.outputs.changed == 'true'
-        run: rustup component add --toolchain stable clippy rustfmt
 
       - name: Run rustfmt
         if: steps.update.outputs.changed == 'true'
