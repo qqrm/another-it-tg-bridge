@@ -40,6 +40,7 @@ cargo run --release
 ## GitHub Actions
 
 The workflow at `.github/workflows/post.yml` builds the binary on a schedule or manual dispatch and commits the updated state file.
+Rust toolchain updates are handled by Dependabot with auto-merge enabled for its pull requests.
 
 ## Development
 
@@ -48,4 +49,3 @@ Ensure the required development tools (`rustfmt`, `clippy`, `cargo-machete`, and
 ## Origins
 
 This project was bootstrapped from [`rust-hh-feed`](https://github.com/qqrm/rust-hh-feed) and retains a similar layout and Actions configuration for maintainers familiar with that repository.
-
