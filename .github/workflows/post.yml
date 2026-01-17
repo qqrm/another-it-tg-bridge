@@ -15,6 +15,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Restore state cache
+        id: state-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: state
+          key: another-it-sent-urls-v1-${{ github.run_number }}
+          restore-keys: |
+            another-it-sent-urls-v1-
+
       - name: Download binary
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -28,5 +37,14 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
+          GOOGLE_CSE_API_KEY: ${{ secrets.GOOGLE_CSE_API_KEY }}
+          GOOGLE_CSE_CX: ${{ secrets.GOOGLE_CSE_CX }}
           RUST_LOG: info
         run: ./another-it-tg-bridge
+
+      - name: Save state cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: state
+          key: another-it-sent-urls-v1-${{ github.run_number }}
