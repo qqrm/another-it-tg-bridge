@@ -12,6 +12,8 @@ Posts new articles from [another-it.ru](https://another-it.ru/) to the [another_
 2. In **Settings → Secrets and variables → Actions**, add:
    - `TELEGRAM_BOT_TOKEN` – Telegram bot token.
    - `TELEGRAM_CHAT_ID` – target chat identifier.
+   - `GOOGLE_CSE_API_KEY` – Google Custom Search API key.
+   - `GOOGLE_CSE_CX` – Programmable Search Engine ID.
    - (optional) `DEV_TELEGRAM_CHAT_ID` – chat for workflow failure notifications.
 3. Enable GitHub Actions for the repository if it is disabled.
 4. Trigger the workflow: open the **Actions** tab, select **Post to Telegram**, and click **Run workflow** (`workflow_dispatch`).
@@ -20,26 +22,23 @@ Posts new articles from [another-it.ru](https://another-it.ru/) to the [another_
 
 - `TELEGRAM_BOT_TOKEN` – Telegram bot token.
 - `TELEGRAM_CHAT_ID` – target chat identifier.
-- `SENT_ARTICLES_PATH` – path to the JSON file that stores already sent URLs (`state.json` by default).
+- `GOOGLE_CSE_API_KEY` – Google Custom Search API key.
+- `GOOGLE_CSE_CX` – Programmable Search Engine ID.
 - `RUST_LOG` – optional logging level (e.g., `info`).
-- `TARGET_DATE` – optional date in `YYYY/MM/DD` used to filter posts. The same value can be
-  provided as the first command line argument for debugging.
 
 ## Manual run
 
 ```sh
 export TELEGRAM_BOT_TOKEN=...
 export TELEGRAM_CHAT_ID=...
-# optional
-export SENT_ARTICLES_PATH=state.json
+export GOOGLE_CSE_API_KEY=...
+export GOOGLE_CSE_CX=...
 cargo run --release
-# For debugging a specific date:
-# cargo run --release 2025/05/26
 ```
 
 ## GitHub Actions
 
-The workflow at `.github/workflows/post.yml` builds the binary on a schedule or manual dispatch and commits the updated state file.
+The workflow at `.github/workflows/post.yml` builds the binary on a schedule or manual dispatch and caches the sent URL state.
 Rust toolchain updates are handled by Dependabot with auto-merge enabled for its pull requests.
 
 ## Development
