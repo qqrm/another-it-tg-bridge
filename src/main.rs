@@ -33,10 +33,10 @@ async fn main() -> Result<()> {
     )
     .unwrap();
 
-    let links = fetch_links(&client, &api_key, &cx).await?;
-    info!("google cse returned {} links", links.len());
+    let items = fetch_items(&client, &api_key, &cx).await?;
+    info!("google cse returned {} items", items.len());
 
-    let articles = filter_links(links, &article_re, window_start, today_msk);
+    let articles = filter_items(items, &article_re, window_start, today_msk);
     info!("links after filtering: {}", articles.len());
 
     let mut sent_urls = load_state(STATE_PATH)?;
@@ -61,7 +61,17 @@ async fn main() -> Result<()> {
     let mut failed = 0usize;
 
     for article in &new_articles {
-        if let Err(e) = bot.send_message(&article.url).await {
+        let text = match article
+            .title
+            .as_ref()
+            .map(|title| title.trim())
+            .filter(|title| !title.is_empty())
+        {
+            Some(title) => format!("{title}\n{}", article.url),
+            None => article.url.clone(),
+        };
+
+        if let Err(e) = bot.send_message(&text).await {
             warn!("telegram error for {}: {e}", article.url);
             failed += 1;
             continue;
@@ -90,15 +100,17 @@ struct CseResponse {
 #[derive(Debug, Deserialize)]
 struct CseItem {
     link: String,
+    title: Option<String>,
 }
 
 #[derive(Debug)]
 struct Article {
     url: String,
+    title: Option<String>,
     date: NaiveDate,
 }
 
-async fn fetch_links(client: &Client, api_key: &str, cx: &str) -> Result<Vec<String>> {
+async fn fetch_items(client: &Client, api_key: &str, cx: &str) -> Result<Vec<CseItem>> {
     let params = [
         ("key", api_key.to_string()),
         ("cx", cx.to_string()),
@@ -124,28 +136,27 @@ async fn fetch_links(client: &Client, api_key: &str, cx: &str) -> Result<Vec<Str
         .await
         .map_err(|_| anyhow::anyhow!("failed to parse Google CSE response"))?;
 
-    Ok(payload
-        .items
-        .unwrap_or_default()
-        .into_iter()
-        .map(|item| item.link)
-        .collect())
+    Ok(payload.items.unwrap_or_default())
 }
 
-fn filter_links(
-    links: Vec<String>,
+fn filter_items(
+    items: Vec<CseItem>,
     article_re: &Regex,
     window_start: NaiveDate,
     today: NaiveDate,
 ) -> Vec<Article> {
-    links
+    items
         .into_iter()
-        .filter_map(|link| {
-            let date = extract_date(&link, article_re)?;
+        .filter_map(|item| {
+            let date = extract_date(&item.link, article_re)?;
             if date < window_start || date > today {
                 return None;
             }
-            Some(Article { url: link, date })
+            Some(Article {
+                url: item.link,
+                title: item.title,
+                date,
+            })
         })
         .collect()
 }
