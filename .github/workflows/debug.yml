@@ -10,6 +10,10 @@ on:
         description: 'Trailing days including today when date is empty'
         required: false
         default: '14'
+      resolve_chat_id:
+        description: 'Print recent Telegram chat ids instead of sending posts'
+        required: false
+        default: 'false'
 
 jobs:
   run-bot:
@@ -32,13 +36,48 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ vars.DEV_TELEGRAM_CHAT_ID || vars.TELEGRAM_CHAT_ID }}
           GOOGLE_CSE_API_KEY: ${{ secrets.GOOGLE_CSE_API_KEY }}
           GOOGLE_CSE_CX: ${{ secrets.GOOGLE_CSE_CX }}
+          RESOLVE_CHAT_ID: ${{ github.event.inputs.resolve_chat_id }}
         run: |
           : "${TELEGRAM_BOT_TOKEN:?missing TELEGRAM_BOT_TOKEN}"
-          : "${TELEGRAM_CHAT_ID:?missing TELEGRAM_CHAT_ID}"
-          : "${GOOGLE_CSE_API_KEY:?missing GOOGLE_CSE_API_KEY}"
-          : "${GOOGLE_CSE_CX:?missing GOOGLE_CSE_CX}"
+          if [ "${RESOLVE_CHAT_ID}" != "true" ]; then
+            : "${TELEGRAM_CHAT_ID:?missing TELEGRAM_CHAT_ID}"
+            : "${GOOGLE_CSE_API_KEY:?missing GOOGLE_CSE_API_KEY}"
+            : "${GOOGLE_CSE_CX:?missing GOOGLE_CSE_CX}"
+          fi
+
+      - name: Resolve chat ids
+        if: ${{ github.event.inputs.resolve_chat_id == 'true' }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          response="$(curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates")"
+          echo "$response" \
+            | jq -r '
+                [
+                  .result[]
+                  | [
+                      .message.chat?,
+                      .edited_message.chat?,
+                      .channel_post.chat?,
+                      .edited_channel_post.chat?,
+                      .my_chat_member.chat?,
+                      .chat_member.chat?
+                    ]
+                  | .[]
+                  | select(. != null)
+                ]
+                | unique_by(.id)
+                | sort_by(.id)
+                | if length == 0 then
+                    "No recent chats found. Send a fresh message or channel post, then rerun this workflow."
+                  else
+                    .[]
+                    | "chat_id=\(.id) type=\(.type) title=\(.title // "-") username=\(.username // "-")"
+                  end
+              '
 
       - name: Run
+        if: ${{ github.event.inputs.resolve_chat_id != 'true' }}
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ vars.DEV_TELEGRAM_CHAT_ID || vars.TELEGRAM_CHAT_ID }}
