@@ -4,8 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       date:
-        description: 'Date in YYYY/MM/DD or YYYY-MM-DD'
-        required: true
+        description: 'Optional single date in YYYY/MM/DD or YYYY-MM-DD'
+        required: false
+      days:
+        description: 'Trailing days including today when date is empty'
+        required: false
+        default: '14'
+      resolve_chat_id:
+        description: 'Print recent Telegram chat ids instead of sending posts'
+        required: false
+        default: 'false'
 
 jobs:
   run-bot:
@@ -17,24 +25,71 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download binary from latest release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release download latest -p another-it-tg-bridge -O another-it-tg-bridge
-          chmod +x another-it-tg-bridge
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build binary
+        run: cargo build --release
 
       - name: Check config
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_ID: ${{ vars.DEV_TELEGRAM_CHAT_ID || vars.TELEGRAM_CHAT_ID }}
+          GOOGLE_CSE_API_KEY: ${{ secrets.GOOGLE_CSE_API_KEY }}
+          GOOGLE_CSE_CX: ${{ secrets.GOOGLE_CSE_CX }}
+          RESOLVE_CHAT_ID: ${{ github.event.inputs.resolve_chat_id }}
         run: |
           : "${TELEGRAM_BOT_TOKEN:?missing TELEGRAM_BOT_TOKEN}"
-          : "${TELEGRAM_CHAT_ID:?missing TELEGRAM_CHAT_ID}"
+          if [ "${RESOLVE_CHAT_ID}" != "true" ]; then
+            : "${TELEGRAM_CHAT_ID:?missing TELEGRAM_CHAT_ID}"
+            : "${GOOGLE_CSE_API_KEY:?missing GOOGLE_CSE_API_KEY}"
+            : "${GOOGLE_CSE_CX:?missing GOOGLE_CSE_CX}"
+          fi
 
-      - name: Run
+      - name: Resolve chat ids
+        if: ${{ github.event.inputs.resolve_chat_id == 'true' }}
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
+        run: |
+          response="$(curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates")"
+          echo "$response" \
+            | jq -r '
+                [
+                  .result[]
+                  | [
+                      .message.chat?,
+                      .edited_message.chat?,
+                      .channel_post.chat?,
+                      .edited_channel_post.chat?,
+                      .my_chat_member.chat?,
+                      .chat_member.chat?
+                    ]
+                  | .[]
+                  | select(. != null)
+                ]
+                | unique_by(.id)
+                | sort_by(.id)
+                | if length == 0 then
+                    "No recent chats found. Send a fresh message or channel post, then rerun this workflow."
+                  else
+                    .[]
+                    | "chat_id=\(.id) type=\(.type) title=\(.title // "-") username=\(.username // "-")"
+                  end
+              '
+
+      - name: Run
+        if: ${{ github.event.inputs.resolve_chat_id != 'true' }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ vars.DEV_TELEGRAM_CHAT_ID || vars.TELEGRAM_CHAT_ID }}
+          GOOGLE_CSE_API_KEY: ${{ secrets.GOOGLE_CSE_API_KEY }}
+          GOOGLE_CSE_CX: ${{ secrets.GOOGLE_CSE_CX }}
+          STATE_PATH: state/debug_sent_urls.txt
+          DEBUG_DATE: ${{ github.event.inputs.date }}
+          DEBUG_DAYS: ${{ github.event.inputs.days }}
           RUST_LOG: info
-        run: ./another-it-tg-bridge "${{ github.event.inputs.date }}"
+        run: |
+          if [ -n "${DEBUG_DATE}" ]; then
+            ./target/release/another-it-tg-bridge "${DEBUG_DATE}"
+          else
+            ./target/release/another-it-tg-bridge --days "${DEBUG_DAYS}"
+          fi
