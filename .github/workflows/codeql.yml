@@ -20,7 +20,7 @@ jobs:
       matrix:
         include:
           - language: rust
-            build-mode: autobuild
+            build-mode: none
 
     steps:
       - uses: actions/checkout@v4
@@ -30,9 +30,6 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
 
       - name: Analyze
         uses: github/codeql-action/analyze@v3
