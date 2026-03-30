@@ -4,8 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       date:
-        description: 'Date in YYYY/MM/DD or YYYY-MM-DD'
-        required: true
+        description: 'Optional single date in YYYY/MM/DD or YYYY-MM-DD'
+        required: false
+      days:
+        description: 'Trailing days including today when date is empty'
+        required: false
+        default: '14'
 
 jobs:
   run-bot:
@@ -17,24 +21,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download binary from latest release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release download latest -p another-it-tg-bridge -O another-it-tg-bridge
-          chmod +x another-it-tg-bridge
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build binary
+        run: cargo build --release
 
       - name: Check config
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_ID: ${{ vars.DEV_TELEGRAM_CHAT_ID || vars.TELEGRAM_CHAT_ID }}
+          GOOGLE_CSE_API_KEY: ${{ secrets.GOOGLE_CSE_API_KEY }}
+          GOOGLE_CSE_CX: ${{ secrets.GOOGLE_CSE_CX }}
         run: |
           : "${TELEGRAM_BOT_TOKEN:?missing TELEGRAM_BOT_TOKEN}"
           : "${TELEGRAM_CHAT_ID:?missing TELEGRAM_CHAT_ID}"
+          : "${GOOGLE_CSE_API_KEY:?missing GOOGLE_CSE_API_KEY}"
+          : "${GOOGLE_CSE_CX:?missing GOOGLE_CSE_CX}"
 
       - name: Run
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_ID: ${{ vars.DEV_TELEGRAM_CHAT_ID || vars.TELEGRAM_CHAT_ID }}
+          GOOGLE_CSE_API_KEY: ${{ secrets.GOOGLE_CSE_API_KEY }}
+          GOOGLE_CSE_CX: ${{ secrets.GOOGLE_CSE_CX }}
+          STATE_PATH: state/debug_sent_urls.txt
+          DEBUG_DATE: ${{ github.event.inputs.date }}
+          DEBUG_DAYS: ${{ github.event.inputs.days }}
           RUST_LOG: info
-        run: ./another-it-tg-bridge "${{ github.event.inputs.date }}"
+        run: |
+          if [ -n "${DEBUG_DATE}" ]; then
+            ./target/release/another-it-tg-bridge "${DEBUG_DATE}"
+          else
+            ./target/release/another-it-tg-bridge --days "${DEBUG_DAYS}"
+          fi

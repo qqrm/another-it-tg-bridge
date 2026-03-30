@@ -14,7 +14,7 @@ Posts new articles from [another-it.ru](https://another-it.ru/) to the [another_
    - `TELEGRAM_CHAT_ID` – target chat identifier.
    - `GOOGLE_CSE_API_KEY` – Google Custom Search API key.
    - `GOOGLE_CSE_CX` – Programmable Search Engine ID.
-   - (optional) `DEV_TELEGRAM_CHAT_ID` – chat for workflow failure notifications.
+   - (optional) `DEV_TELEGRAM_CHAT_ID` – debug chat identifier for manual backfills.
 3. Enable GitHub Actions for the repository if it is disabled.
 4. Trigger the workflow: open the **Actions** tab, select **Post to Telegram**, and click **Run workflow** (`workflow_dispatch`).
 
@@ -36,9 +36,22 @@ export GOOGLE_CSE_CX=...
 cargo run --release
 ```
 
+Pass an optional date argument (`YYYY/MM/DD` or `YYYY-MM-DD`) to probe a single day via Google CSE:
+
+```sh
+cargo run --release -- 2026-03-28
+```
+
+Pass `--days N` to scan a trailing window including today:
+
+```sh
+cargo run --release -- --days 14
+```
+
 ## GitHub Actions
 
-The workflow at `.github/workflows/post.yml` builds the binary on a schedule or manual dispatch and caches the sent URL state.
+The workflow at `.github/workflows/post.yml` builds the binary on a schedule or manual dispatch and caches the sent URL state. Scheduled runs query Google CSE for the recent date prefixes to absorb indexing delays while still deduplicating already-sent links.
+The manual workflow at `.github/workflows/debug.yml` targets `DEV_TELEGRAM_CHAT_ID` when present and defaults to a 14-day backfill into an isolated debug state file.
 Rust toolchain updates are handled by Dependabot with auto-merge enabled for its pull requests.
 
 ## Development
