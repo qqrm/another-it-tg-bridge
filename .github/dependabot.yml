@@ -1,9 +1,25 @@
 version: 2
 updates:
-  - package-ecosystem: "rust-toolchain"
+  - package-ecosystem: "cargo"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "12:00"
+      timezone: "Europe/Moscow"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "12:30"
+      timezone: "Europe/Moscow"
+
+  - package-ecosystem: "rust-toolchain"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "13:00"
       timezone: "Europe/Moscow"
